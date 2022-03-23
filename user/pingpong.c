@@ -20,6 +20,7 @@ int main(void) {
         write(fd[1], "0", 1);
         read(fd[0], buf, 1);
         printf("%d: received pong\n", getpid());
+        wait(0);
     }
     exit(0);
 }

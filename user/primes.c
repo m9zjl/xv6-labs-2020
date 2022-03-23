@@ -8,7 +8,7 @@ void child(int fd[]) {
     if (p == -1) {
         exit(0);
     }
-    printf("primes %d\n", p);
+    printf("prime %d\n", p);
     int pright[2];
     pipe(pright);
 
@@ -29,7 +29,6 @@ void child(int fd[]) {
         buf = -1;
         write(pright[1], &buf, sizeof(buf));
         wait(0);
-        exit(0);
     }
 }
 
