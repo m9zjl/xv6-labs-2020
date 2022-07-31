@@ -6,6 +6,10 @@
         "types.h": "c",
         "proc.h": "c",
         "fs.h": "c",
-        "typeinfo": "c"
-    }
+        "typeinfo": "c",
+        "limits": "c",
+        "exception": "c",
+        "new": "c"
+    },
+    "C_Cpp.errorSquiggles": "Enabled"
 }

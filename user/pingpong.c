@@ -2,24 +2,34 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
+#define READ_PORT 0
+#define WRITE_PORT 1
+
 int main(void) {
-    int fd[2];
-    char buf[2];
-    int err;
-    if ((err = pipe(fd)) != 0) {
-        exit(err);
-    }
-    if ((err = fork()) == 0) {
-        close(fd[1]);
-        read(fd[0], buf, 1);
+    int p1[2];
+    int p2[2];
+    char buf[1];
+    pipe(p1);
+    pipe(p2);
+    if (fork() == 0) {
+        // child
+        close(p1[WRITE_PORT]);
+        close(p2[READ_PORT]);
+        read(p1[READ_PORT], buf, 1);
         printf("%d: received ping\n", getpid());
-        close(fd[0]);
-        write(fd[1], "0", 1);
+        write(p2[WRITE_PORT], " ", 1);
+        close(p2[WRITE_PORT]);
+        close(p1[READ_PORT]);
+        exit(0);
     } else {
-        close(fd[0]);
-        write(fd[1], "0", 1);
-        read(fd[0], buf, 1);
+        // parent
+        close(p1[READ_PORT]);
+        close(p2[WRITE_PORT]);
+        write(p1[WRITE_PORT], " ", 1);
+        read(p2[READ_PORT], buf, 1);
         printf("%d: received pong\n", getpid());
+        close(p1[WRITE_PORT]);
+        close(p2[READ_PORT]);
         wait(0);
     }
     exit(0);

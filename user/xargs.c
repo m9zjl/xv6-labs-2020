@@ -3,95 +3,88 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-char *fmtname(char *path) {
-    static char buf[DIRSIZ + 1];
-    for(int i = 0 ;i< DIRSIZ +1;i++){
-        buf[i] = 0;
-    }
-    char *p;
-    // Find first character after last slash.
-    for(p=path+strlen(path); p >= path && *p != '/'; p--)
-        ;
-    p++;
+#define MAX_LEN 100
+#define MAXARG 100
+#define MAX_ARG 100
 
-    // Return blank-padded name.
-    if(strlen(p) >= DIRSIZ)
-        return p;
-    memmove(buf, p, strlen(p));
-    // comment this line for it's appending ' ' at the end of path
-    //memset(buf+strlen(p), ' ', DIRSIZ-strlen(p));
-    return buf;
+
+void copy(char **p1, char *p2){
+    *p1 = malloc(strlen(p2) + 1);
+    strcpy(*p1, p2);
 }
 
-void find(char *path, char *name) {
-    char buf[512], *p;
-    int fd;
-    struct stat st;
-    struct dirent de;
-
-    if ((fd = open(path, 0)) < 0) {
-        fprintf(2, "ls: cannot open %s\n", path);
-        return;
-    }
-
-    if (fstat(fd, &st) < 0) {
-        fprintf(2, "ls: cannot stat %s\n", path);
-        close(fd);
-        return;
-    }
-
-    switch (st.type) {
-    case T_FILE: 
-        if (strcmp(fmtname(path), name) == 0) {
-            printf("%s\n", path);
-        }
-        break;
-    case T_DIR:
-        if (strlen(path) + 1 + DIRSIZ + 1 > sizeof(buf)) {
-            printf("ls: path too long\n");
+// i为起始下标
+int readLine(char **pars, int i){
+    int d = 1024;
+    char buf[d];
+    int j = 0;
+    // 读取1行
+    while (read(0, buf + j, 1)){
+        // 按行划分
+        if (buf[j] == '\n'){
+            buf[j] = 0;
             break;
         }
-        strcpy(buf, path);
-        p = buf + strlen(buf);
-        *p++ = '/';
-        while (read(fd, &de, sizeof(de)) == sizeof(de)) {
-            if (de.inum == 0)
-                continue;
-            if (strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0) {
-                continue;
-            }
-            memmove(p, de.name, DIRSIZ);
-            p[DIRSIZ] = 0;
-            if (stat(buf, &st) < 0) {
-                printf("ls: cannot stat %s\n", buf);
-                continue;
-            }
-            // DFS
-            find(buf, name);
-            // switch (st.type) {
-            // case T_FILE:
-            //     if (strcmp(de.name, name) == 0) {
-            //         printf("%s\n", buf);
-            //     }
-            //     break;
-
-            // case T_DIR:
-            //     find(buf, name);
-            //     break;
-            // }
+        j++;
+        if (j == d){
+            fprintf(2, "Parameters are too long!\n");
+            exit(1);
         }
-        break;
     }
-    close(fd);
+    
+    // 没有读取内容
+    if (j == 0){
+        return -1;
+    }
+
+    // 按照空格划分
+    int k = 0;
+    while (k < j){
+        if (i > MAXARG){
+            fprintf(2, "Too much parameters!\n");
+            exit(1);
+        }
+        // '   abc   sdf'
+        // 忽略
+        while ((k < j) && (buf[k] == ' ')){
+            k++;
+        }
+        // 起始位置
+        int l = k;
+        // 保留字符
+        while ((k < j) && (buf[k] != ' ')){
+            k++;
+        }
+        // 注意需要k++
+        buf[k++] = 0;
+        copy(&pars[i], buf + l);
+        i++;
+    }
+
+    return i;
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        fprintf(2, "Usage: find <dir> <name>\n");
+int main(int argc, char *argv[]){
+    if (argc < 2){
+        printf("Please enter more parameters!\n");
+        exit(1);
+    }else{
+        int i;
+        char *pars[MAXARG];
+        for (i = 1; i < argc; i++){
+            copy(&pars[i - 1], argv[i]);
+        }
+        
+        int end;
+        while ((end = readLine(pars, argc - 1)) != -1){
+            pars[end] = 0;
+            if (fork() == 0){
+                exec(pars[0], pars);
+                exit(1);
+            }else{
+                wait(0);
+            }
+        }
         exit(0);
-    } else {
-        find(argv[1], argv[2]);
-        exit(-1);
     }
-    exit(0);
 }
